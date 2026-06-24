@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "echarts@5.5.1",
+      "destination": "wwwroot/lib/echarts/",
+      "files": [ "echarts.min.js" ]
+    },
+    {
+      "library": "microsoft-signalr@8.0.7",
+      "destination": "wwwroot/lib/microsoft-signalr/",
+      "files": [ "signalr.min.js" ]
+    }
+  ]
+}

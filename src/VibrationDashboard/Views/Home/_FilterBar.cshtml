@@ -1,0 +1,24 @@
+@* 查詢 / 篩選 / 每頁筆數工具列:純前端對已載入全量做(listQuery 接縫,見 docs/07 §5.3)。
+   全量無資料時隱藏(由 dashboard.js 切換 hidden)。 *@
+<section class="filterbar" id="filterbar" hidden aria-label="設備查詢與篩選">
+    <input type="search" id="filter-q" class="filterbar__search"
+           placeholder="搜尋設備名稱或編號…" aria-label="搜尋設備名稱或編號" autocomplete="off" />
+    <div class="filterbar__group">
+        <span class="filterbar__label">狀態</span>
+        <div class="seg" id="filter-status" role="group" aria-label="依狀態篩選">
+            <button type="button" class="seg__btn is-active" data-status="All">全部</button>
+            <button type="button" class="seg__btn" data-status="Good">良好</button>
+            <button type="button" class="seg__btn" data-status="Abnormal">異常</button>
+            <button type="button" class="seg__btn" data-status="Danger">危險</button>
+        </div>
+    </div>
+    <div class="filterbar__group filterbar__group--end">
+        <label class="filterbar__label" for="filter-page-size">每頁</label>
+        <select id="filter-page-size" class="filterbar__select" aria-label="每頁顯示筆數">
+            <option value="12" selected>12 筆</option>
+            <option value="24">24 筆</option>
+            <option value="48">48 筆</option>
+        </select>
+        <span class="filterbar__count" id="filter-count" aria-live="polite"></span>
+    </div>
+</section>

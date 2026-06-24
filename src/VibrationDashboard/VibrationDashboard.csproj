@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 產生 XML 文件檔,供 Swagger 讀取 summary（見 rules/後端實作準則/02）。 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 1591：公開成員缺 XML 註解的警告，骨架階段先關閉，避免噪音。 -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <!-- SQL 路徑（Phase 8，可切換）：EF Core Code-first + Migrations。
+         釘 8.0.11（與 net9 執行階段相容，且離線快取齊備）；Design 供 dotnet-ef 產 migration。 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- 記錄（rules/後端/02 §5）：Serilog 取代內建 ILogger 後端，輸出 Console + 每日輪替檔。
+         釘版本與離線快取一致（net9 對應 AspNetCore 9.0.0）。 -->
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>

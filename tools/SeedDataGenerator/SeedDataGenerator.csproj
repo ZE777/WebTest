@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- 重用 web 專案的 JSON schema 契約（MachineFileModel），確保產生與讀取同一份結構。 -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VibrationDashboard\VibrationDashboard.csproj" />
+  </ItemGroup>
+
+  <!-- web 專案掛載共享框架；本工具同樣宣告以利執行期解析。 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

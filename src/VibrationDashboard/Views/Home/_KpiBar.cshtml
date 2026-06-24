@@ -1,0 +1,27 @@
+@* KPI 彙總列:一眼看全廠健康(數字由 dashboard.js 載入後填入)。純結構掛載點,無商業邏輯。 *@
+<section class="kpi" aria-label="全廠健康彙總">
+    <div class="kpi__item">
+        <span class="kpi__label">設備總數</span>
+        <span class="kpi__num" id="kpi-total">—</span>
+    </div>
+    <div class="kpi__item kpi__item--health">
+        <span class="kpi__label">健康率</span>
+        <span class="kpi__num" id="kpi-health">—</span>
+    </div>
+    @* 良好/異常/危險 可點擊 → 篩選下方清單(再點同一個取消);role/tabindex 供鍵盤操作 *@
+    <div class="kpi__item kpi__item--good" role="button" tabindex="0" aria-pressed="false"
+         data-status="Good" data-tooltip="點擊只看良好設備(再點取消)">
+        <span class="kpi__label"><span class="kpi__dot kpi__dot--good"></span>良好</span>
+        <span class="kpi__num" id="kpi-good">—</span>
+    </div>
+    <div class="kpi__item kpi__item--abnormal" role="button" tabindex="0" aria-pressed="false"
+         data-status="Abnormal" data-tooltip="點擊只看異常設備(再點取消)">
+        <span class="kpi__label"><span class="kpi__dot kpi__dot--abnormal"></span>異常</span>
+        <span class="kpi__num" id="kpi-abnormal">—</span>
+    </div>
+    <div class="kpi__item kpi__item--danger" role="button" tabindex="0" aria-pressed="false"
+         data-status="Danger" data-tooltip="點擊只看危險設備(再點取消)">
+        <span class="kpi__label"><span class="kpi__dot kpi__dot--danger"></span>危險</span>
+        <span class="kpi__num" id="kpi-danger">—</span>
+    </div>
+</section>

@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "看板";
+}
+
+@* 容器頁:組合各 Partial(長相)+ 放置 JS 掛載點(grid / pager)。實際渲染由 wwwroot/js 各模組負責。 *@
+<partial name="_KpiBar" />
+<partial name="_OverviewPanels" />
+<partial name="_FilterBar" />
+
+@* 機器卡片網格:掛載點。dashboard.js 依 listQuery 結果只渲染「當前頁」子集(危險優先);KPI/排行/告警仍吃全量 *@
+<section id="grid" class="grid" aria-label="設備卡片清單"></section>
+
+@* 分頁列:>1 頁才顯示(由 dashboard.js 切換 hidden) *@
+<nav class="pager" id="pager" hidden aria-label="分頁導覽">
+    <button type="button" id="pager-prev" class="btn-ghost pager__btn">‹ 上一頁</button>
+    <span class="pager__info" id="pager-info" aria-live="polite">第 1 / 1 頁</span>
+    <button type="button" id="pager-next" class="btn-ghost pager__btn">下一頁 ›</button>
+</nav>
+
+<partial name="_AlertsPanel" />
+<partial name="_TrendModal" />
+<partial name="_MachineCardTemplate" />
+
+@section Scripts {
+    @* 載入順序 = 相依在前:基礎工具 → 渲染元件 → 容器 → 即時層 *@
+    <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+    <script src="~/js/api.js" asp-append-version="true"></script>
+    <script src="~/js/shared.js" asp-append-version="true"></script>
+    <script src="~/js/icons.js" asp-append-version="true"></script>
+    <script src="~/js/sparkline.js" asp-append-version="true"></script>
+    <script src="~/js/tooltip.js" asp-append-version="true"></script>
+    <script src="~/js/appState.js" asp-append-version="true"></script>
+    <script src="~/js/machineCard.js" asp-append-version="true"></script>
+    <script src="~/js/panels.js" asp-append-version="true"></script>
+    <script src="~/js/trendChart.js" asp-append-version="true"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+    <script src="~/js/realtime.js" asp-append-version="true"></script>
+}

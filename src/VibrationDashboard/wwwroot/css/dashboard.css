@@ -1,0 +1,727 @@
+/* ===========================================================================
+   振動監測儀表板 — 視覺樣式
+   設計原則(見 docs/05、rules/前端/03):深色工業風 + 克制用色;
+   綠/黃/紅只用在狀態燈與越界處,平時整面只有深藍灰 + 一個主色(青)。
+   所有色彩/間距/動畫一律走 CSS 變數,禁止 hardcode。
+   =========================================================================== */
+
+:root {
+  /* 色彩 ─ 深色工業儀表板 */
+  --bg: #0E1726;            /* 頁面底:深藍工業 */
+  --surface: #16243B;       /* 卡片/面板 */
+  --surface-2: #1E3050;     /* 內層/hover */
+  --text: #C7D2E0;          /* 主文字 */
+  --text-dim: #93A4BC;      /* 次要文字(對 surface ≈4.6:1,過 WCAG AA;原 #7C8BA1 僅 ~3.4:1) */
+  --grid: rgba(255, 255, 255, .06); /* 格線/分隔 */
+
+  --accent: #22D3EE;        /* 主色:游標/選中/趨勢線(平時唯一彩色) */
+
+  /* 狀態色 ─ 只用在狀態燈與越界資料點/門檻線 */
+  --good: #22C55E;          /* 良好(綠) */
+  --warning: #F59E0B;       /* 異常(琥珀) */
+  --danger: #EF4444;        /* 危險(紅;狀態燈/門檻線用) */
+  --danger-deep: #B23B3B;   /* 沉穩深紅(實心按鈕用,比 --danger 不刺眼) */
+
+  /* 趨勢圖分區色帶(極淡;markArea 引用,禁止 JS 內 hardcode 色碼) */
+  --zone-good: rgba(34, 197, 94, .06);
+  --zone-warning: rgba(245, 158, 11, .07);
+  --zone-danger: rgba(239, 68, 68, .09);
+
+  /* 危險轉移光暈(卡片升級為危險時的脈衝色) */
+  --danger-glow: rgba(239, 68, 68, .5);
+
+  /* 共用提示(tooltip)— 微微半透明 + 圓角(HTML data-tooltip 與 ECharts tooltip 共用) */
+  --tooltip-bg: rgba(13, 21, 36, .88);
+  --tooltip-border: rgba(255, 255, 255, .10);
+
+  /* 間距 */
+  --space-1: 4px; --space-2: 8px; --space-3: 16px; --space-4: 24px;
+
+  /* 圓角/字級 */
+  --radius: 8px;
+  --font-value: 28px;
+
+  /* 動畫曲線(統一引用) */
+  --ease: cubic-bezier(.25, .8, .25, 1);
+  --transition: .3s var(--ease);
+}
+
+/* ── 基礎 ───────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1, h2 { margin: 0; font-weight: 600; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── App 外殼 ──────────────────────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--grid);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+}
+
+.app-header__title { font-size: 18px; letter-spacing: .5px; }
+.app-header__title small { color: var(--text-dim); font-weight: 400; font-size: 12px; margin-left: var(--space-2); }
+
+.app-main { padding: var(--space-4); max-width: 1440px; margin: 0 auto; }
+
+/* ── 標頭右側:更新時間 + 重整 + 連線狀態 ─────────────────────────────── */
+.app-header__status { display: inline-flex; align-items: center; gap: var(--space-3); }
+.app-header__status #last-updated { font-size: 12px; color: var(--text-dim); }
+
+/* ── 連線狀態指示(右上) ─────────────────────────────────────────────── */
+.conn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: 12px; color: var(--text-dim);
+}
+.conn__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+.conn--live   .conn__dot { background: var(--good); }
+.conn--poll   .conn__dot { background: var(--warning); }
+.conn--down   .conn__dot { background: var(--danger); }
+
+.btn-ghost {
+  background: var(--surface); color: var(--text); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: 6px 12px; cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--accent); }
+
+/* 重新整理鈕:icon + 文字;更新中 icon 旋轉(沿用 spin keyframe) */
+.btn-refresh { display: inline-flex; align-items: center; gap: 6px; }
+.btn-refresh__icon { width: 14px; height: 14px; flex: none; }
+.btn-refresh:hover .btn-refresh__icon { color: var(--accent); }
+.btn-refresh.is-loading .btn-refresh__icon { animation: spin .8s linear infinite; }
+.btn-refresh[disabled] { cursor: default; opacity: .85; }
+.btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
+.btn-ghost:disabled:hover { background: var(--surface); border-color: var(--grid); }
+
+/* ── 查詢 / 篩選 / 每頁筆數工具列(對已載入全量做,listQuery 接縫) ───────── */
+.filterbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+.filterbar[hidden] { display: none; }
+.filterbar__search {
+  flex: 1 1 220px; min-width: 160px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--grid); border-radius: var(--radius);
+  padding: 7px 12px; font-size: 13px;
+}
+.filterbar__search::placeholder { color: var(--text-dim); }
+.filterbar__group { display: inline-flex; align-items: center; gap: var(--space-2); }
+.filterbar__group--end { margin-left: auto; }
+.filterbar__label { color: var(--text-dim); font-size: 12px; }
+.filterbar__select {
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--grid); border-radius: var(--radius);
+  padding: 6px 10px; font-size: 13px; cursor: pointer;
+}
+.filterbar__count { margin-left: var(--space-2); color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* ── 分頁列 ────────────────────────────────────────────────────────────── */
+.pager { display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-4); }
+.pager[hidden] { display: none; }
+.pager__info { color: var(--text-dim); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 7em; text-align: center; }
+.pager__btn { font-size: 13px; }
+
+/* ── KPI 彙總列 ────────────────────────────────────────────────────────── */
+.kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.kpi__item {
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.kpi__label { color: var(--text-dim); font-size: 12px; display: inline-flex; align-items: center; gap: var(--space-2); }
+.kpi__num { font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi__dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.kpi__dot--good    { background: var(--good); }
+.kpi__dot--abnormal{ background: var(--warning); }
+.kpi__dot--danger  { background: var(--danger); }
+.kpi__item--good    .kpi__num { color: var(--good); }
+.kpi__item--abnormal .kpi__num { color: var(--warning); }
+.kpi__item--danger  .kpi__num { color: var(--danger); }
+.kpi__item--health  .kpi__num { color: var(--accent); }
+
+/* 危險/異常 > 0:該 KPI 格低調強調(餘光可辨「今天要不要緊張」);歸零時安靜 */
+.kpi__item--danger.is-active {
+  border-color: rgba(239, 68, 68, .45);
+  background: linear-gradient(180deg, rgba(239, 68, 68, .10), var(--surface));
+}
+.kpi__item--abnormal.is-active {
+  border-color: rgba(245, 158, 11, .40);
+  background: linear-gradient(180deg, rgba(245, 158, 11, .08), var(--surface));
+}
+
+/* ── 總覽 BI:狀態分布堆疊長條 + 風險排行 ───────────────────────────────── */
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.panel {
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: var(--space-3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+.panel__title { font-size: 13px; color: var(--text); display: flex; align-items: baseline; gap: var(--space-2); }
+.panel__title small { color: var(--text-dim); font-size: 11px; font-weight: 400; }
+
+/* 狀態分布堆疊長條(三段占比;CSS-only,免 echarts) */
+.dist__bar {
+  position: relative;   /* 供載入 shimmer ::after 疊放 */
+  display: flex; height: 14px; margin: var(--space-3) 0 var(--space-2);
+  border-radius: 999px; overflow: hidden; background: var(--surface-2);
+}
+.dist__seg { height: 100%; transition: width var(--transition), filter var(--transition); }
+.dist__seg--good     { background: var(--good); }
+.dist__seg--abnormal { background: var(--warning); }
+.dist__seg--danger   { background: var(--danger); }
+.dist__legend { display: flex; gap: var(--space-3); color: var(--text-dim); font-size: 12px; }
+.dist__key { display: inline-flex; align-items: center; gap: 6px; }
+
+/* 分布長條段可點擊篩選(KPI 那排之外的便利入口) */
+.dist__seg[data-status] { cursor: pointer; transition: width var(--transition), filter var(--transition), opacity var(--transition); }
+.dist__seg[data-status]:hover { filter: brightness(1.18); }
+/* 選中狀態：不加框，改用「其餘段變淡、選中段保持滿亮」表達(bar 為 overflow:hidden，框會被裁) */
+.dist__bar:has(.dist__seg.is-filtering) .dist__seg:not(.is-filtering) { opacity: .35; }
+/* 鍵盤聚焦才顯示的細指示(滑鼠點擊不觸發 :focus-visible);inset 不被 overflow 裁掉 */
+.dist__seg[data-status]:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* 健康率走勢:把「快照」升級成「方向」;固定 0–100 縱軸（線越高＝越健康）。
+   margin-top:auto 讓走勢沉到面板底部，順勢補滿與風險排行等高後的留白。 */
+.dist__trend { margin-top: auto; padding-top: var(--space-3); border-top: 1px solid var(--grid); }
+.dist__trend-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.dist__trend-label { font-size: 12px; color: var(--text-dim); }
+.dist__trend-label small { font-size: 11px; opacity: .8; }
+/* 計算說明 info 圖示:低調 dim 點,hover/focus 才亮主色 + 跳 tooltip(只有滑到 icon 才出現,不再整列觸發)*/
+.info-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0; margin-left: 4px;
+  border: 0; background: transparent; color: var(--text-dim);
+  cursor: help; vertical-align: -2px; border-radius: 50%;
+  transition: color var(--transition);
+}
+.info-dot svg { width: 13px; height: 13px; }
+.info-dot:hover, .info-dot:focus-visible { color: var(--accent); outline: none; }
+.dist__delta { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dist__delta--up   { color: var(--good); }
+.dist__delta--down { color: var(--danger); }
+.dist__delta--flat, .dist__delta--none { color: var(--text-dim); font-weight: 400; }
+.dist__spark { width: 100%; height: 40px; margin-top: 6px; position: relative; }
+.dist__spark svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.dist__spark-area { fill: rgba(34, 211, 238, .12); stroke: none; }
+.dist__spark-line { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+/* 末點圓點:HTML 疊層(非 SVG circle),絕對定位 + border-radius 永遠保持正圓,不隨 SVG 橫向拉伸變橢圓 */
+.dist__spark-dot  { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); pointer-events: none; }
+
+/* 風險排行 Top N */
+.risk__list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.risk-empty { color: var(--text-dim); text-align: center; padding: var(--space-2); font-size: 13px; }
+.risk-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 6px var(--space-2); border-radius: var(--radius);
+  background: var(--surface-2); border-left: 3px solid var(--text-dim);
+  cursor: pointer; transition: background var(--transition), transform var(--transition);
+}
+.risk-item:hover { background: var(--bg); transform: translateX(2px); }
+.risk-item--abnormal { border-left-color: var(--warning); }
+.risk-item--danger   { border-left-color: var(--danger); }
+.risk-item--good     { border-left-color: var(--good); }
+.risk-item__rank {
+  flex: none; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  background: var(--surface); color: var(--text-dim); font-variant-numeric: tabular-nums;
+}
+.risk-item__dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+.risk-item--abnormal .risk-item__dot { background: var(--warning); }
+.risk-item--danger   .risk-item__dot { background: var(--danger); }
+.risk-item--good     .risk-item__dot { background: var(--good); }
+.risk-item__name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.risk-item__sev {
+  flex: none; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px;
+  color: var(--text);
+}
+.risk-item--danger .risk-item__sev { color: var(--danger); }
+.risk-item--abnormal .risk-item__sev { color: var(--warning); }
+
+/* ── 區塊載入 / 失敗狀態(狀態分布 · 風險排行 · 告警事件) ────────────────────
+   初次載入時三個區塊各自顯示 shimmer 骨架;整頁載入失敗時顯示精簡的失敗提示。 */
+@keyframes shimmer { to { transform: translateX(100%); } }
+.skeleton { position: relative; overflow: hidden; background: var(--surface-2); border-radius: var(--radius); }
+.skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent);
+  animation: shimmer 1.3s infinite;
+}
+
+/* 分布長條:載入 shimmer / 失敗 dim */
+.dist__bar.is-loading::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .08), transparent);
+  animation: shimmer 1.3s infinite;
+}
+/* 載入失敗:藏掉長條與圖例,只留失敗提示(不殘留半截元素) */
+.panel--dist.is-error .dist__bar,
+.panel--dist.is-error .dist__trend,
+.panel--dist.is-error .dist__legend { display: none; }
+
+/* 失敗/空狀態的提示文字在面板內「垂直置中」:兩欄面板等高(grid stretch),
+   置中後左右文字 Y 對齊,不受標題高度差(風險排行有副標、較高)影響。 */
+.panel--dist, .panel--risk { display: flex; flex-direction: column; }
+.panel--dist.is-error .panel__note { flex: 1; margin: 0; }
+.panel--risk .risk__list:has(.list-error, .risk-empty) { flex: 1; justify-content: center; }
+
+/* 區塊失敗提示行(風險排行 / 告警 list 內,以及分布面板下方) */
+.panel__note, .list-error {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  color: var(--text-dim); font-size: 13px; text-align: center;
+}
+.panel__note { margin: var(--space-2) 0 0; }
+.list-error { padding: var(--space-3); }
+.panel__note svg, .list-error svg { width: 15px; height: 15px; color: var(--danger); flex: none; }
+
+/* 骨架行高度(對齊風險排行 / 告警項目尺寸,避免載入完二次跳版) */
+.risk-skeleton { height: 32px; }
+.alert-skeleton { height: 40px; }
+
+/* ── 卡片網格 ──────────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.card {
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: var(--radius); overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.card--selected { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+
+.card__media { position: relative; aspect-ratio: 16 / 9; background: var(--surface-2); }
+.card__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* 狀態徽章(疊在圖檔右上) */
+.status {
+  position: absolute; top: var(--space-2); right: var(--space-2);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(14, 23, 38, .72); backdrop-filter: blur(2px);
+  font-size: 12px; color: var(--text);
+}
+
+/* 設備類型標籤(媒體左上;平衡右上狀態徽章,沿用 tooltip 半透明調) */
+.card__type {
+  position: absolute; top: var(--space-2); left: var(--space-2); z-index: 2;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--tooltip-bg); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  border: 1px solid var(--tooltip-border);
+  font-size: 11px; color: var(--text);
+}
+.card__type[hidden] { display: none; }
+.status__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+.status--good    .status__dot { background: var(--good); }
+.status--abnormal .status__dot { background: var(--warning); }
+.status--danger  .status__dot { background: var(--danger); }
+/* 危險狀態:狀態燈緩慢脈衝(只動 opacity) */
+.status--danger  .status__dot { animation: pulse 1.2s infinite; }
+
+.card__body { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); flex: 1; }
+.card__name { font-size: 15px; }
+.card__value { margin: 0; display: flex; align-items: baseline; gap: 4px; }
+.card__value-num { font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.card__unit { color: var(--text-dim); font-size: 12px; }
+.card__spark { height: 32px; margin-top: auto; position: relative; }
+.card__spark svg { width: 100%; height: 100%; display: block; }
+.card__spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+/* 末點圓點:HTML 疊層(非 SVG circle),絕對定位 + border-radius 永遠保持正圓,不隨 SVG 橫向拉伸變橢圓 */
+.spark-dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.spark-dot--good     { background: var(--good); }
+.spark-dot--abnormal { background: var(--warning); }
+.spark-dot--danger   { background: var(--danger); }
+.card__btn {
+  background: transparent; color: var(--accent); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: 6px; cursor: pointer; font-size: 12px;
+  transition: background var(--transition), border-color var(--transition);
+}
+.card__btn:hover { background: var(--surface-2); border-color: var(--accent); }
+
+/* 數值剛更新:短暫高亮背景(差異更新後加一次性 class) */
+@keyframes flash { 0% { background: var(--surface-2); } 100% { background: var(--surface); } }
+.card--updated { animation: flash .6s var(--ease); }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* 狀態升級為危險:整張卡片紅色光暈脈衝兩次(只動 box-shadow,合成器友善) */
+@keyframes alarm { 0% { box-shadow: 0 0 0 2px var(--danger-glow); } 100% { box-shadow: 0 0 0 14px transparent; } }
+.card--alarm { animation: alarm 1s var(--ease) 2; }
+
+/* ── 明細趨勢圖 Modal(Phase 6:彈出大圖) ─────────────────────────────── */
+.modal { position: fixed; inset: 0; z-index: 900; display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
+.modal[hidden] { display: none; }
+.modal__backdrop { position: absolute; inset: 0; background: rgba(8, 14, 24, .72); backdrop-filter: blur(2px); animation: fade-in .2s var(--ease); }
+.modal__dialog {
+  position: relative; z-index: 1; width: min(960px, 100%); max-height: 88vh;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  background: var(--surface); border: 1px solid var(--grid); border-radius: var(--radius);
+  padding: var(--space-4); box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+  animation: modal-in .22s var(--ease);
+}
+.modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.modal__title { font-size: 18px; }
+.modal__readout { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); color: var(--text-dim); font-size: 13px; }
+.modal__readout .ro i { font-style: normal; }
+.modal__readout .ro b { color: var(--text); font-variant-numeric: tabular-nums; }
+.modal__readout .ro--good b     { color: var(--good); }
+.modal__readout .ro--abnormal b { color: var(--warning); }
+.modal__readout .ro--danger b   { color: var(--danger); }
+/* 狀態徽章:把讀數頭的「狀態」從純文字升級成 pill(沿用卡片狀態燈的圓點 + 色彩語言) */
+.modal__readout .ro--status { display: inline-flex; align-items: center; gap: 6px; }
+.modal__readout .status-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 10px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--grid);
+  font-weight: 600; line-height: 1.6;
+}
+.modal__readout .status-badge.status--good     { background: var(--zone-good);    border-color: rgba(34, 197, 94, .35); }
+.modal__readout .status-badge.status--abnormal { background: var(--zone-warning); border-color: rgba(245, 158, 11, .35); }
+.modal__readout .status-badge.status--danger   { background: var(--zone-danger);  border-color: rgba(239, 68, 68, .35); }
+.modal__readout .status-badge.status--good     .status__label { color: var(--good); }
+.modal__readout .status-badge.status--abnormal .status__label { color: var(--warning); }
+.modal__readout .status-badge.status--danger   .status__label { color: var(--danger); }
+/* 趨勢方向金句:稍微突顯(底色 + 內距),把「快照」升級成「方向」 */
+.modal__readout .ro--trend {
+  padding: 2px 8px; border-radius: 999px; background: var(--surface-2);
+}
+.modal__readout .ro--trend.ro--danger { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .35); }
+.modal__readout .ro--trend.ro--good   { box-shadow: inset 0 0 0 1px rgba(34, 197, 94, .30); }
+.modal__actions { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.modal__close {
+  background: transparent; color: var(--text-dim); border: 1px solid var(--grid);
+  border-radius: var(--radius); width: 32px; height: 32px; cursor: pointer; font-size: 14px; line-height: 1;
+  transition: color var(--transition), border-color var(--transition);
+}
+.modal__close:hover { color: var(--text); border-color: var(--accent); }
+/* 左右切換鈕:浮在對話框「外側」左右兩邊(lightbox 風);只有 >1 台時由 JS 取消 hidden */
+.modal__nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); color: var(--text-dim); border: 1px solid var(--grid);
+  cursor: pointer; transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.modal__nav svg { width: 22px; height: 22px; }
+.modal__nav:hover { color: var(--text); border-color: var(--accent); background: var(--surface-2); }
+.modal__nav--prev { left: var(--space-4); }
+.modal__nav--next { right: var(--space-4); }
+.modal__nav[hidden] { display: none; }
+/* 位置指示(第幾台 / 共幾台) */
+.modal__pos { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.modal__pos[hidden] { display: none; }
+.modal__chart { width: 100%; height: 420px; min-height: 280px; }
+/* 載入覆蓋層:鋪滿整個對話框並置中轉圈(避免被空圖表容器撐開而偏下) */
+.modal__loading {
+  position: absolute; inset: 0; z-index: 3;
+  background: var(--surface); border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-2); color: var(--text-dim); padding: var(--space-4);
+}
+/* display:flex 會蓋過 hidden 屬性的 display:none → 必須補此覆蓋,載入完才真正隱藏 */
+.modal__loading[hidden] { display: none; }
+
+/* Modal 載入失敗區塊:沿用 .state 置中視覺(X 圖示 + 原因 + 錯誤碼 + 重試);
+   .state 的 display:flex 會蓋掉 hidden,故補此較高優先序的覆蓋(class + 屬性)。 */
+.modal__error { min-height: 360px; }
+.modal__error[hidden] { display: none; }
+
+/* 區間切換 seg 控制(7天 / 30天 / 全部 / 自訂):active 用 accent 填色,選取狀態一眼可辨 */
+.seg { display: inline-flex; border: 1px solid var(--grid); border-radius: var(--radius); overflow: hidden; }
+.seg__btn {
+  background: var(--surface); color: var(--text); border: 0; padding: 7px 16px; cursor: pointer;
+  font-size: 13px; font-weight: 600; line-height: 1;
+  transition: background var(--transition), color var(--transition);
+}
+.seg__btn + .seg__btn { border-left: 1px solid var(--grid); }   /* 兩鈕間分隔線 */
+.seg__btn:hover { background: var(--surface-2); color: var(--accent); }
+.seg__btn.is-active { background: var(--accent); color: var(--bg); font-weight: 700; }
+.seg__btn.is-active:hover { background: var(--accent); color: var(--bg); }  /* active hover 維持填色,不變灰 */
+
+/* 自訂期間列:點「自訂」區間才顯示;做成獨立面板(背景 + accent 左框)凸顯這是控制列,
+   不再是浮在圖上方不起眼的兩個小框;原生日期框走暗色主題(color-scheme) */
+.trend-custom {
+  display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  align-self: flex-start;                                   /* 靠左不撐滿整列 */
+  padding: 8px 14px; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--grid);
+  border-left: 3px solid var(--accent);                     /* accent 左框,一眼看到是「自訂期間」面板 */
+}
+.trend-custom[hidden] { display: none; }
+.trend-custom__title { color: var(--text); font-size: 13px; font-weight: 700; margin-right: var(--space-1); }
+.trend-custom__lbl { color: var(--text-dim); font-size: 13px; }
+.trend-custom__sep { color: var(--text-dim); }
+.trend-custom__input {
+  background: var(--surface); color: var(--text); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: 6px 10px; font-size: 13px; font-family: inherit;
+  color-scheme: dark;   /* 讓原生日期選擇器/行事曆圖示一起走暗色,不再是白底彈窗 */
+  transition: border-color var(--transition);
+}
+.trend-custom__input:hover { border-color: var(--accent); }
+.trend-custom__input:focus { outline: none; border-color: var(--accent); }
+
+body.modal-open { overflow: hidden; }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ── 告警事件清單(Phase 7:即時推播累積) ─────────────────────────────── */
+.alerts {
+  margin-top: var(--space-4);
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: var(--radius); padding: var(--space-3) var(--space-4) var(--space-4);
+}
+.alerts__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.alerts__title { font-size: 15px; display: inline-flex; align-items: center; gap: var(--space-2); }
+.alerts__count {
+  min-width: 22px; padding: 0 6px; border-radius: 999px;
+  background: var(--surface-2); color: var(--text-dim);
+  font-size: 12px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums;
+}
+.alert-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  max-height: 280px; overflow-y: auto;
+}
+.alert-empty { color: var(--text-dim); text-align: center; padding: var(--space-3); }
+.alert-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius);
+  background: var(--surface-2); border-left: 3px solid var(--text-dim);
+  cursor: pointer; animation: alert-in .25s var(--ease);
+  transition: background var(--transition), transform var(--transition);
+}
+.alert-item:hover { background: var(--bg); transform: translateX(2px); }
+.alert-item--abnormal { border-left-color: var(--warning); }
+.alert-item--danger   { border-left-color: var(--danger); }
+.alert-item--good     { border-left-color: var(--good); }
+.alert-item__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); flex: none; }
+.alert-item--abnormal .alert-item__dot { background: var(--warning); }
+.alert-item--danger   .alert-item__dot { background: var(--danger); animation: pulse 1.2s infinite; }
+.alert-item--good     .alert-item__dot { background: var(--good); }
+.alert-item__body { display: flex; align-items: baseline; gap: var(--space-2); flex: 1; min-width: 0; }
+.alert-item__name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 12em; }
+.alert-item__msg { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+.alert-item--up .alert-item__msg { color: var(--text); }
+.alert-item__time { margin-left: auto; color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; flex: none; }
+@keyframes alert-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ── 狀態提示:載入中 / 空資料 / 載入失敗(水平垂直置中) ────────────────
+   三種狀態共用同一版型:整塊跨滿卡片區(grid-column 1/-1)並給 min-height,
+   再用 flex 置中 → 水平垂直都置中。內含圖示/轉圈 + 標題 + 說明(+ 失敗重試鈕)。 */
+.state {
+  grid-column: 1 / -1;
+  min-height: 48vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;     /* 水平置中 */
+  justify-content: center; /* 垂直置中 */
+  gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-4);
+  color: var(--text-dim);
+  animation: state-in .3s var(--ease);
+}
+@keyframes state-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 圖示圓底(空/失敗用 SVG 字符;依狀態給對應主色淡底) */
+.state__icon {
+  width: 64px; height: 64px; flex: none;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--surface-2); color: var(--text-dim);
+}
+.state__icon svg { width: 30px; height: 30px; }
+.state--empty .state__icon { color: var(--accent); background: rgba(34, 211, 238, .10); }
+.state--error .state__icon { color: var(--danger); background: rgba(239, 68, 68, .12); position: relative; }
+/* 失敗圖示「擴散」漣漪:兩圈外擴環錯開時間,持續向外擴散後淡出(只動 transform/opacity) */
+.state--error .state__icon::before,
+.state--error .state__icon::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid var(--danger); pointer-events: none;
+  animation: error-ripple 1.8s var(--ease) infinite;
+}
+.state--error .state__icon::after { animation-delay: .9s; }
+@keyframes error-ripple {
+  0%   { transform: scale(1);   opacity: .55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* 載入轉圈(只動 transform,合成器友善) */
+.state__spinner {
+  width: 48px; height: 48px; flex: none;
+  border: 3px solid var(--grid);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.state__spinner--sm { width: 30px; height: 30px; border-width: 2.5px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.state__title { font-size: 16px; font-weight: 600; color: var(--text); }
+.state--error .state__title { color: var(--danger); }
+.state__desc { margin: 0; max-width: 40ch; font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+/* 失敗頁的 ErrorCode / traceId 一行(等寬碼,易於回報追查) */
+.state__meta { margin: 0; font-size: 12px; color: var(--text-dim); }
+.state__meta code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  background: var(--surface-2); color: var(--text);
+  padding: 1px 6px; border-radius: 4px; margin: 0 2px;
+}
+/* 主要動作鈕(重試):danger 紅填色 + 圖示,小巧的復原 CTA(看板區塊錯誤與 Modal 共用) */
+.state__action {
+  margin-top: var(--space-3);
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--danger-deep); color: #fff;
+  border: 1px solid var(--danger-deep); border-radius: var(--radius);
+  padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+  transition: filter var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.state__action:hover { filter: brightness(1.1); box-shadow: 0 4px 12px rgba(0, 0, 0, .3); transform: translateY(-1px); }
+.state__action:active { transform: translateY(0); }
+.state__action svg { width: 14px; height: 14px; }
+/* 中性次要動作鈕(如「清除篩選」):用 ghost 樣式,不搶眼,與 state__action 紅色 CTA 區隔 */
+.state__btn { margin-top: var(--space-3); }
+
+/* ── Toast(角落非阻擋提示) ────────────────────────────────────────────── */
+.toast-root { position: fixed; right: var(--space-4); bottom: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); z-index: 1000; }
+.toast {
+  background: var(--surface-2); color: var(--text); border-left: 3px solid var(--accent);
+  border-radius: var(--radius); padding: 10px 14px; min-width: 220px; max-width: 360px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+  animation: toast-in .25s var(--ease);
+}
+.toast--warning { border-left-color: var(--warning); }
+.toast--danger  { border-left-color: var(--danger); }
+.toast--good    { border-left-color: var(--good); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── 共用提示 tooltip(data-tooltip;掛 body 層,可跳出 overflow:hidden) ──── */
+.app-tooltip {
+  position: fixed; left: 0; top: 0; z-index: 1100; pointer-events: none;
+  max-width: 260px; padding: 6px 10px;
+  background: var(--tooltip-bg);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border: 1px solid var(--tooltip-border); border-radius: 6px;
+  color: var(--text); font-size: 12px; line-height: 1.45;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+  opacity: 0; transform: translateY(3px);
+  transition: opacity .12s var(--ease), transform .12s var(--ease);
+}
+.app-tooltip.is-visible { opacity: 1; transform: translateY(0); }
+/* 解釋型 tooltip 的目標(非可點擊)給 help 游標,暗示「滑上去有怎麼算的說明」 */
+.ro[data-tooltip] { cursor: help; }
+
+/* ===========================================================================
+   美術精修(Art polish)— 純視覺強化:深度/質感/層次/微光暈。
+   不改結構與配色語意:綠/黃/紅仍只用於狀態,主色青只用於互動與品牌點。
+   放檔尾以 later-wins 覆蓋,便於檢視/還原。
+   =========================================================================== */
+
+/* 整體:頂部微弱環境光暈(營造深度)+ 細捲軸 */
+body {
+  background:
+    radial-gradient(1100px 520px at 50% -8%, rgba(34, 211, 238, .055), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+* { scrollbar-width: thin; scrollbar-color: var(--surface-2) transparent; }
+
+/* 品牌點:標題前一道主色光條 */
+.app-header__title::before {
+  content: ""; display: inline-block; width: 4px; height: 17px; margin-right: 10px;
+  vertical-align: -3px; border-radius: 2px;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+}
+
+/* KPI:左側分類色條 + 頂部高光 + hover 浮起;狀態點加光暈 */
+.kpi__item {
+  position: relative; overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.kpi__item::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--text-dim);
+}
+.kpi__item:first-child::before { background: var(--accent); }
+.kpi__item--good::before       { background: var(--good); }
+.kpi__item--abnormal::before   { background: var(--warning); }
+.kpi__item--danger::before     { background: var(--danger); }
+/* 設備總數/健康率為純資訊卡(不可點),不給 hover 漂浮;良好/異常/危險可點擊篩選 */
+.kpi__item[data-status] { cursor: pointer; transition: filter var(--transition); }
+/* 點擊/篩選中不畫外框(避免框框),改用極淡提亮表示可互動與當前選取 */
+.kpi__item[data-status]:hover,
+.kpi__item[data-status].is-filtering { filter: brightness(1.12); }
+.kpi__dot--good     { box-shadow: 0 0 6px var(--good); }
+.kpi__dot--abnormal { box-shadow: 0 0 6px var(--warning); }
+.kpi__dot--danger   { box-shadow: 0 0 6px var(--danger); }
+
+/* 卡片:頂部高光 + 圖片向卡身漸隱 + hover 更立體 + 徽章描邊/危險光暈 + 按鈕箭頭 */
+.card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03); }
+.card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0, 0, 0, .42); border-color: rgba(34, 211, 238, .28); }
+.card__media::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, rgba(14, 23, 38, .55) 100%);
+}
+.status { z-index: 2; border: 1px solid rgba(255, 255, 255, .07); }
+.status--danger { box-shadow: 0 0 10px rgba(239, 68, 68, .28); }
+.status--good    .status__dot { box-shadow: 0 0 6px var(--good); }
+.status--abnormal .status__dot { box-shadow: 0 0 6px var(--warning); }
+.status--danger  .status__dot { box-shadow: 0 0 6px var(--danger); }
+.card__btn:hover { color: var(--accent); }
+.card__btn::after { content: "›"; margin-left: 6px; font-weight: 700; }
+
+/* ── 響應式:窄螢幕(手機/縮視窗 demo 常見)避免 header 與 Modal 爆版 ──────── */
+@media (max-width: 640px) {
+  .app-header { flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3); }
+  .app-header__status { width: 100%; justify-content: space-between; gap: var(--space-2); }
+  .app-header__status #last-updated { display: none; }   /* 次要資訊讓位,主資訊優先 */
+  .app-main { padding: var(--space-3); }
+  .overview { grid-template-columns: 1fr; }               /* 分布 / 風險排行改上下堆疊 */
+  .kpi { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .modal { padding: var(--space-2); }
+  .modal__dialog { max-height: 92vh; padding: var(--space-3); }
+  .modal__head { flex-direction: column; align-items: stretch; }
+  .modal__chart { height: min(420px, 50vh); min-height: 220px; }
+  /* 窄螢幕:側鈕貼齊螢幕邊、縮小一點,疊在圖表左右邊緣(lightbox 風) */
+  .modal__nav { width: 38px; height: 38px; }
+  .modal__nav--prev { left: var(--space-2); }
+  .modal__nav--next { right: var(--space-2); }
+}
+
+/* 尊重「減少動態」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

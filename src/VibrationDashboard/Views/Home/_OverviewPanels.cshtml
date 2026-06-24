@@ -1,0 +1,29 @@
+@* 總覽 BI:狀態分布(堆疊長條,CSS-only 免 echarts)+ 風險排行 Top N(依嚴重度)。資料由 dashboard.js 填。 *@
+<section class="overview" aria-label="狀態分布與風險排行">
+    <div class="panel panel--dist">
+        <h2 class="panel__title">狀態分布 <small>點長條可篩選</small></h2>
+        @* 長條三段可點擊 → 篩選下方清單(與 KPI 那排同邏輯);role/tabindex/aria 由 dashboard.js 依占比維護 *@
+        <div class="dist__bar" id="dist-bar" role="group" aria-label="全廠狀態分布(點段可篩選)">
+            <span class="dist__seg dist__seg--good" id="dist-good" data-status="Good" role="button"></span>
+            <span class="dist__seg dist__seg--abnormal" id="dist-abnormal" data-status="Abnormal" role="button"></span>
+            <span class="dist__seg dist__seg--danger" id="dist-danger" data-status="Danger" role="button"></span>
+        </div>
+        <div class="dist__legend">
+            <span class="dist__key"><span class="kpi__dot kpi__dot--good"></span>良好</span>
+            <span class="dist__key"><span class="kpi__dot kpi__dot--abnormal"></span>異常</span>
+            <span class="dist__key"><span class="kpi__dot kpi__dot--danger"></span>危險</span>
+        </div>
+        @* 健康率走勢:把「快照」升級成「方向」;固定 0–100 縱軸,資料由 dashboard.js 累積(docs/07 §6 趨勢) *@
+        <div class="dist__trend" id="dist-trend" hidden>
+            <div class="dist__trend-head">
+                <span class="dist__trend-label">健康率走勢 <small>近 <span id="dist-trend-n">0</span> 期</small><button type="button" class="info-dot" aria-label="健康率走勢計算說明" data-tooltip="健康率 % = round(良好台數 ÷ 總台數 × 100);「良好」逐台用各自門檻判定(非加總健康度)。走勢:初次用各台既有量測逐期回推、之後每次全廠彙總追加一點,最右 = 目前(全廠口徑,不受篩選/分頁影響)。"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button></span>
+                <span class="dist__delta" id="dist-delta"></span>
+            </div>
+            <div class="dist__spark" id="dist-spark" aria-hidden="true"></div>
+        </div>
+    </div>
+    <div class="panel panel--risk">
+        <h2 class="panel__title">風險排行 <small>依嚴重度(值÷危險門檻)</small><button type="button" class="info-dot" aria-label="風險排行計算說明" data-tooltip="嚴重度 = 最新值 ÷ 危險門檻;100% = 剛好到危險線、>100% 已超過。各台危險門檻不同、原始 mm/s 不可跨機比較,正規化後才能公平排出 Top 5 風險。"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button></h2>
+        <ol class="risk__list" id="risk-list" aria-label="風險排行清單"></ol>
+    </div>
+</section>

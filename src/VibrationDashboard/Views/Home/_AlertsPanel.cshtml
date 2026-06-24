@@ -1,0 +1,10 @@
+@* 告警事件清單:由 SignalR 即時推播累積(狀態升級/恢復各記一筆),清單由 panels.js 維護。 *@
+<section class="alerts" aria-label="告警事件清單">
+    <div class="alerts__head">
+        <h2 class="alerts__title">告警事件<span class="alerts__count" id="alert-count" aria-label="事件筆數">0</span></h2>
+        <button type="button" id="alert-clear" class="btn-ghost">清除</button>
+    </div>
+    <ul class="alert-list" id="alert-list" aria-live="polite">
+        <li class="alert-empty">尚無告警事件</li>
+    </ul>
+</section>

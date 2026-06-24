@@ -1,0 +1,25 @@
+@* 卡片樣板:結構放在標記層,machineCard.js 複製後以 .text()/.attr() 填值(防 XSS)。 *@
+<template id="machine-card-template">
+    <article class="card" tabindex="-1">
+        <div class="card__media">
+            <img class="card__img" alt="" loading="lazy" />
+            @* 設備類型標籤(左上;無類型時由 JS 移除)— 平衡右上的狀態徽章 *@
+            <span class="card__type" hidden></span>
+            @* 狀態徽章:非 live region(原 role="status" 會在每次差異更新觸發讀報器洗版)。
+               以靜態 aria-label 描述當前狀態;升級事件的播報交給下方告警清單(已有 aria-live)。 *@
+            <span class="status">
+                <span class="status__dot" aria-hidden="true"></span>
+                <span class="status__label"></span>
+            </span>
+        </div>
+        <div class="card__body">
+            <h2 class="card__name"></h2>
+            <p class="card__value" aria-live="polite">
+                <span class="card__value-num"></span>
+                <span class="card__unit"></span>
+            </p>
+            <div class="card__spark"></div>
+            <button type="button" class="card__btn">查看趨勢</button>
+        </div>
+    </article>
+</template>

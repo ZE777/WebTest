@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - 振動監測看板</title>
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="app-header">
+        <h1 class="app-header__title">
+            振動監測看板
+            <small>Vibration Condition Monitoring</small>
+        </h1>
+        <div class="app-header__status">
+            <span id="last-updated"></span>
+            <button type="button" id="btn-refresh" class="btn-ghost btn-refresh">
+                <svg class="btn-refresh__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="23 4 23 10 17 10" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                <span class="btn-refresh__label">重新整理</span>
+            </button>
+            <span id="conn-indicator" class="conn" aria-label="即時連線狀態" role="status">
+                <span class="conn__dot"></span>
+                <span id="conn-text">連線中…</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="app-main">
+        @RenderBody()
+    </main>
+
+    @* antiforgery token:供 api.js 於寫入請求(POST/PUT/DELETE)帶上 header(見 rules/前端/05) *@
+    @Html.AntiForgeryToken()
+
+    <div id="toast-root" class="toast-root"></div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

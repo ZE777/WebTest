@@ -1,0 +1,63 @@
+@* 明細趨勢圖:彈出 Modal 大圖(點卡片開啟;ECharts 由 trendChart.js 懶載入)。文字內容由 JS 以 .text() 填入。 *@
+<div id="trend-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="trend-title">
+    <div class="modal__backdrop" data-close="1"></div>
+    @* 左右切換(上一台/下一台):放在對話框「外側」左右兩邊(lightbox 風);只有可切換(>1 台)時由 trendChart.js 取消 hidden。 *@
+    <button type="button" class="modal__nav modal__nav--prev" id="trend-prev" aria-label="上一台(←)" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+    </button>
+    <button type="button" class="modal__nav modal__nav--next" id="trend-next" aria-label="下一台(→)" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>
+    </button>
+    <div class="modal__dialog" role="document">
+        <header class="modal__head">
+            <div class="modal__heading">
+                <h2 id="trend-title" class="modal__title">—</h2>
+                <div id="trend-readout" class="modal__readout" aria-live="polite"></div>
+            </div>
+            <div class="modal__actions">
+                @* 位置指示(第幾台 / 共幾台);可切換時才顯示 *@
+                <span class="modal__pos" id="trend-pos" aria-live="polite" hidden></span>
+                <div class="seg" role="group" aria-label="時間區間">
+                    <button type="button" class="seg__btn" data-range="all">全部</button>
+                    <button type="button" class="seg__btn" data-range="7d">7 天</button>
+                    <button type="button" class="seg__btn is-active" data-range="30d">30 天</button>
+                    <button type="button" class="seg__btn" data-range="custom">自訂</button>
+                </div>
+                <button type="button" class="modal__close" data-close="1" aria-label="關閉趨勢圖">✕</button>
+            </div>
+        </header>
+        @* 自訂期間:點「自訂」才顯示;日期框 min/max 由 trendChart.js 夾在該設備資料跨度內,改值即重畫 *@
+        <div id="trend-custom" class="trend-custom" hidden>
+            <span class="trend-custom__title">自訂期間</span>
+            <label class="trend-custom__lbl" for="trend-from">起</label>
+            <input type="date" id="trend-from" class="trend-custom__input" aria-label="起始日期">
+            <span class="trend-custom__sep" aria-hidden="true">→</span>
+            <label class="trend-custom__lbl" for="trend-to">迄</label>
+            <input type="date" id="trend-to" class="trend-custom__input" aria-label="結束日期">
+        </div>
+        <div id="trend-chart" class="modal__chart" aria-label="振動趨勢圖"></div>
+        <div id="trend-loading" class="modal__loading" hidden role="status" aria-live="polite">
+            <span class="state__spinner state__spinner--sm" aria-hidden="true"></span>
+            <span>載入趨勢資料…</span>
+        </div>
+        @* 載入失敗:置中 X + 原因 + 錯誤碼/traceId + 重試(與看板區塊錯誤同一套視覺語言);文字由 trendChart.js 以 .text() 填入 *@
+        <div id="trend-error" class="modal__error state state--error" hidden role="alert">
+            <div class="state__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+            </div>
+            <h2 class="state__title">趨勢資料載入失敗</h2>
+            <p class="state__desc" id="trend-error-desc"></p>
+            <p class="state__meta" id="trend-error-meta" hidden></p>
+            <button type="button" class="state__action" id="trend-retry">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="23 4 23 10 17 10" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                <span>重新載入</span>
+            </button>
+        </div>
+    </div>
+</div>
