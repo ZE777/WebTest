@@ -40,6 +40,8 @@
   /* 圓角/字級 */
   --radius: 8px;
   --font-value: 28px;
+  /* 讀數字體(階段 2):儀表級等寬數字,科技感且數字對齊;純系統字、不引外部字型(配合 CSP font 'self') */
+  --font-readout: 'Cascadia Mono', Consolas, ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* 動畫曲線(統一引用) */
   --ease: cubic-bezier(.25, .8, .25, 1);
@@ -153,7 +155,7 @@ h1, h2 { margin: 0; font-weight: 600; }
   display: flex; flex-direction: column; gap: var(--space-1);
 }
 .kpi__label { color: var(--text-dim); font-size: 12px; display: inline-flex; align-items: center; gap: var(--space-2); }
-.kpi__num { font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi__num { font-family: var(--font-readout); letter-spacing: -.5px; font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; }
 .kpi__dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .kpi__dot--good    { background: var(--good); }
 .kpi__dot--abnormal{ background: var(--warning); }
@@ -353,7 +355,7 @@ h1, h2 { margin: 0; font-weight: 600; }
 .card__body { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); flex: 1; }
 .card__name { font-size: 15px; }
 .card__value { margin: 0; display: flex; align-items: baseline; gap: 4px; }
-.card__value-num { font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.card__value-num { font-family: var(--font-readout); letter-spacing: -.5px; font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
 .card__unit { color: var(--text-dim); font-size: 12px; }
 .card__spark { height: 32px; margin-top: auto; position: relative; }
 .card__spark svg { width: 100%; height: 100%; display: block; }
@@ -393,9 +395,9 @@ h1, h2 { margin: 0; font-weight: 600; }
 }
 .modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .modal__title { font-size: 18px; }
-.modal__readout { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); color: var(--text-dim); font-size: 13px; }
+.modal__readout { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-2); color: var(--text-dim); font-size: 13px; }
 .modal__readout .ro i { font-style: normal; }
-.modal__readout .ro b { color: var(--text); font-variant-numeric: tabular-nums; }
+.modal__readout .ro b { color: var(--text); font-family: var(--font-readout); font-variant-numeric: tabular-nums; }
 .modal__readout .ro--good b     { color: var(--good); }
 .modal__readout .ro--abnormal b { color: var(--warning); }
 .modal__readout .ro--danger b   { color: var(--danger); }
@@ -689,7 +691,7 @@ body {
 .kpi__dot--danger   { box-shadow: 0 0 6px var(--danger); }
 
 /* 卡片:頂部高光 + 圖片向卡身漸隱 + hover 更立體 + 徽章描邊/危險光暈 + 按鈕箭頭 */
-.card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03); }
+.card { box-shadow: 0 1px 3px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .045); }
 .card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0, 0, 0, .42); border-color: rgba(34, 211, 238, .28); }
 .card__media::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;

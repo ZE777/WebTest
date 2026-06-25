@@ -232,7 +232,15 @@
       ],
       series: [{
         type: 'line', smooth: true, symbol: 'circle',
-        lineStyle: { color: accent, width: 2 }, itemStyle: { color: accent },
+        // 線發光 + 線下 accent 漸層填色(階段 2):強化趨勢量體感與科技感。
+        lineStyle: { color: accent, width: 2, shadowBlur: 8, shadowColor: 'rgba(34, 211, 238, .45)' },
+        itemStyle: { color: accent },
+        areaStyle: {
+          color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(34, 211, 238, .26)' },
+            { offset: 1, color: 'rgba(34, 211, 238, 0)' }
+          ])
+        },
         data: data,
         // 門檻線:警告(黃)、危險(紅)兩條水平虛線
         markLine: {
