@@ -22,7 +22,7 @@
      回傳同形狀 { items, total, totalPages, page },上層(renderView)不必改。
      KPI/風險排行/告警一律另對 AppState 全量算,不受此處篩選分頁影響(見 docs/07 §5.3)。 */
   var DEFAULT_PAGE_SIZE = 12;
-  var view = { search: '', status: 'All', pageSize: DEFAULT_PAGE_SIZE, page: 1, sort: 'severity', sortDir: 'desc' };
+  var view = { search: '', status: 'All', type: 'All', pageSize: DEFAULT_PAGE_SIZE, page: 1, sort: 'severity', sortDir: 'desc' };
 
   // 篩選 + 排序(危險優先、同級 id 升序)。listQuery 分頁與「明細 Modal 左右切換」共用同一份順序,
   // 使用者看到什麼順序、左右切換就照什麼順序(見 navIdsFor)。
@@ -30,6 +30,7 @@
     var q = (v.search || '').trim().toLowerCase();
     var filtered = (machines || []).filter(function (m) {
       if (v.status !== 'All' && m.status !== v.status) return false;
+      if (v.type && v.type !== 'All' && m.type !== v.type) return false;
       if (q) {
         // 名稱 + 編號 + 類型皆可搜(如輸入「泵」即篩出所有泵浦;僅做比對,不進 DOM,無 XSS 風險)
         var hay = (String(m.name || '') + ' ' + String(m.id || '') + ' ' + String(m.type || '')).toLowerCase();
@@ -81,7 +82,7 @@
   // ── 記住篩選(localStorage)──────────────────────────────────────────────
   // 持久化篩選/排序/每頁偏好;不存 page(重整回第 1 頁)、不存 selectedId。隱私模式/壞資料一律略過。
   var LS_KEY = 'vib.dashboard.prefs';
-  var PREF_KEYS = ['search', 'status', 'sort', 'sortDir', 'pageSize'];
+  var PREF_KEYS = ['search', 'status', 'type', 'sort', 'sortDir', 'pageSize'];
   function loadPrefs() {
     try {
       var saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
@@ -100,9 +101,29 @@
     $('#filter-q').val(view.search);
     $('#filter-status .seg__btn').removeClass('is-active')
       .filter('[data-status="' + view.status + '"]').addClass('is-active');
+    $('#filter-type').val(view.type);   // 選項可能尚未填(load 後由 populateTypeOptions 再對齊)
     $('#filter-sort').val(view.sort);
     $('#filter-page-size').val(view.pageSize);
     $('#filter-sort-dir').text(view.sortDir === 'asc' ? '↑' : '↓');
+  }
+
+  // 依目前載入的全量資料,動態填入「類型」下拉選項(有哪些類型就列哪些 + 全部)。
+  // 選項文字一律以 .text() 設定(防 XSS);若目前選的類型已不存在(該類設備全移除)→ 退回「全部」。
+  // 以類型集合簽章比對,只有集合改變才重建,避免即時推播頻繁重繪下拉、打斷使用者操作。
+  function populateTypeOptions() {
+    var $sel = $('#filter-type');
+    if (!$sel.length) return;
+    var all = AppState.get('machines') || [];
+    var seen = {}, types = [];
+    all.forEach(function (m) { var t = m.type; if (t && !seen[t]) { seen[t] = true; types.push(t); } });
+    types.sort(function (a, b) { return String(a).localeCompare(String(b), 'zh-Hant'); });
+    if (view.type !== 'All' && !seen[view.type]) view.type = 'All';   // 選的類型沒了 → 退回全部
+    var sig = types.join('');
+    if ($sel.data('typesig') === sig) { $sel.val(view.type); return; }
+    $sel.data('typesig', sig).empty();
+    $('<option></option>').val('All').text('全部類型').appendTo($sel);
+    types.forEach(function (t) { $('<option></option>').val(t).text(t).appendTo($sel); });
+    $sel.val(view.type);
   }
 
   // 相對時間「N 秒前」:stampUpdated 設基準時間,renderUpdated 由 5 秒 ticker 重算顯示。
@@ -176,6 +197,12 @@
         view.page = 1; onChange();
       });
 
+      // 類型篩選(下拉;選項由 populateTypeOptions 依資料動態產生)
+      $('#filter-type').on('change', function () {
+        view.type = this.value || 'All';
+        view.page = 1; onChange();
+      });
+
       // 排序欄位(嚴重度 / 名稱 / 最新值)+ 升降冪切換鈕
       function defaultDir(field) { return field === 'name' ? 'asc' : 'desc'; }   // 名稱預設 A→Z;嚴重度/最新值預設高→低
       function syncSortDir() {
@@ -219,10 +246,11 @@
 
     // 清除篩選(供「沒有符合條件」時的次要動作)
     function reset() {
-      view.search = ''; view.status = 'All'; view.page = 1;
+      view.search = ''; view.status = 'All'; view.type = 'All'; view.page = 1;
       $('#filter-q').val('');
       $('#filter-status .seg__btn').removeClass('is-active')
         .filter('[data-status="All"]').addClass('is-active');
+      $('#filter-type').val('All');
       onChange();
     }
 
@@ -262,6 +290,7 @@
       var prevStatus = prev ? prev.status : undefined;
 
       AppState.set('machines', mergeMachine(all, dto));
+      populateTypeOptions();                        // 新增的設備可能帶來新類型
       renderView();                                 // 重算當前頁(在頁內者由 patch 帶動畫)
       Kpi.update(AppState.get('machines'));
       RiskRanking.update(AppState.get('machines'));
@@ -274,6 +303,7 @@
     // 即時推播:設備移除
     function applyRemove(id) {
       AppState.set('machines', (AppState.get('machines') || []).filter(function (m) { return m.id !== id; }));
+      populateTypeOptions();                        // 該類最後一台被移除時,下拉與選擇同步更新
       renderView();                                 // 移除後重算當前頁(可能補進下一頁的卡)
       Kpi.update(AppState.get('machines'));
       RiskRanking.update(AppState.get('machines'));
@@ -294,6 +324,7 @@
       return Api.get('/api/machines')
         .done(function (machines) {
           AppState.set('machines', machines);
+          populateTypeOptions();                    // 依資料更新類型下拉(保留選擇,失效則退回全部)
           renderView();                             // 首次/刷新統一走 renderView(內部對 DOM diff)
           Kpi.update(machines);
           RiskRanking.update(machines);

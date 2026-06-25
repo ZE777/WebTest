@@ -12,6 +12,13 @@
             <button type="button" class="seg__btn" data-status="Danger">危險</button>
         </div>
     </div>
+    @* 類型篩選:選項由 dashboard.js 依載入資料動態填入(有哪些類型就列哪些);與狀態/搜尋可疊加。 *@
+    <div class="filterbar__group">
+        <label class="filterbar__label" for="filter-type">類型</label>
+        <select id="filter-type" class="filterbar__select" aria-label="依設備類型篩選">
+            <option value="All" selected>全部類型</option>
+        </select>
+    </div>
     <div class="filterbar__group filterbar__group--end">
         <label class="filterbar__label" for="filter-sort">排序</label>
         <select id="filter-sort" class="filterbar__select" aria-label="排序方式">
