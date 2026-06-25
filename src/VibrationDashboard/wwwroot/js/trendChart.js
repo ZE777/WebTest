@@ -170,6 +170,9 @@
     var maxVal = ms.reduce(function (a, m) { return Math.max(a, m.value); }, 0);
     var yTop = +(Math.max(danger, maxVal) * 1.15).toFixed(4);
     var accent = cssVar('--accent'), dim = cssVar('--text-dim'), grid = cssVar('--grid');
+    // 小螢幕(≤880px)停用圖內滾輪縮放/拖曳平移,否則會吃掉 Modal 的捲動、把資料縮放出可視範圍;
+    // 改由右側滑桿縮放。桌機(>880px)維持圖內手勢。
+    var compact = !!(window.matchMedia && window.matchMedia('(max-width: 880px)').matches);
 
     return {
       animation: !reduceMotion,
@@ -215,7 +218,7 @@
       // filterMode:'none' 是關鍵 → 只改可視範圍、不過濾掉視窗外的點(否則趨勢線會斷)。
       // inside:圖內滾輪縮放/拖曳平移;slider:右側垂直滑桿(對齊 grid 上下緣)。雙擊還原由 renderChart 接。
       dataZoom: [
-        { type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+        { type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: !compact, moveOnMouseMove: !compact, moveOnMouseWheel: false },
         {
           type: 'slider', yAxisIndex: 0, filterMode: 'none',
           right: 8, width: 6, top: 28, bottom: 36, borderRadius: 3,  // 細軌貼右緣,與 grid 上下對齊

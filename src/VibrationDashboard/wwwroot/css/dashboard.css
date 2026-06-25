@@ -400,6 +400,7 @@ h1, h2 { margin: 0; font-weight: 600; }
   background: var(--surface); border: 1px solid var(--grid); border-radius: var(--radius);
   padding: var(--space-4); box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
   animation: modal-in .22s var(--ease);
+  overflow-y: auto;   /* 內容超過 max-height(橫向短螢幕/小視窗)時可捲動,避免下方被切掉看不到 */
 }
 .modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .modal__title { font-size: 18px; }
@@ -729,6 +730,22 @@ body {
   .modal__nav { width: 38px; height: 38px; }
   .modal__nav--prev { left: var(--space-2); }
   .modal__nav--next { right: var(--space-2); }
+}
+
+/* ── 響應式補強(階段 4):中尺寸 + 觸控目標 ───────────────────────────── */
+
+/* 平板/中尺寸:BI 兩欄面板在變太窄之前先改上下堆疊(640 以下既有,這裡補 641–880 區段) */
+@media (max-width: 880px) {
+  .overview { grid-template-columns: 1fr; }
+}
+
+/* 手機:搜尋獨佔一列、右側控制項換行不擠、可點目標放大到好按(≈44px,合 WCAG 2.5.5) */
+@media (max-width: 640px) {
+  .filterbar__search { flex-basis: 100%; }
+  .filterbar__group--end { margin-left: 0; flex-wrap: wrap; }
+  .btn-ghost, .seg__btn, .filterbar__select, .filterbar__sortdir,
+  .filterbar__search, .pager__btn, .card__btn { min-height: 44px; }
+  .modal__close { width: 44px; height: 44px; }
 }
 
 /* 尊重「減少動態」偏好 */
