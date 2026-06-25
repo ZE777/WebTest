@@ -78,6 +78,33 @@
     return filterSort(all, { search: '', status: 'All' }).map(function (m) { return m.id; });
   }
 
+  // ── 記住篩選(localStorage)──────────────────────────────────────────────
+  // 持久化篩選/排序/每頁偏好;不存 page(重整回第 1 頁)、不存 selectedId。隱私模式/壞資料一律略過。
+  var LS_KEY = 'vib.dashboard.prefs';
+  var PREF_KEYS = ['search', 'status', 'sort', 'sortDir', 'pageSize'];
+  function loadPrefs() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+      PREF_KEYS.forEach(function (k) { if (saved[k] != null) view[k] = saved[k]; });
+    } catch (e) { /* 壞資料/隱私模式:略過,用預設 */ }
+  }
+  function savePrefs() {
+    try {
+      var o = {};
+      PREF_KEYS.forEach(function (k) { o[k] = view[k]; });
+      localStorage.setItem(LS_KEY, JSON.stringify(o));
+    } catch (e) { /* 隱私模式/配額:略過 */ }
+  }
+  // 把還原後的 view 回填到工具列控制項,讓 UI 與 view 一致
+  function reflectControls() {
+    $('#filter-q').val(view.search);
+    $('#filter-status .seg__btn').removeClass('is-active')
+      .filter('[data-status="' + view.status + '"]').addClass('is-active');
+    $('#filter-sort').val(view.sort);
+    $('#filter-page-size').val(view.pageSize);
+    $('#filter-sort-dir').text(view.sortDir === 'asc' ? '↑' : '↓');
+  }
+
   // 相對時間「N 秒前」:stampUpdated 設基準時間,renderUpdated 由 5 秒 ticker 重算顯示。
   // title 仍掛絕對時間(滑上去看得到精確時刻)。
   var lastUpdatedAt = null;
@@ -289,6 +316,9 @@
       if (initialized) return;
       initialized = true;
 
+      loadPrefs();        // 還原上次的篩選/排序/每頁(localStorage)
+      reflectControls();  // 回填到工具列控制項(UI 與 view 一致)
+
       // KPI 良好/異常/危險 → 篩選下方清單(再點同一個 → 取消回全部);複用 #filter-status 的 seg 邏輯
       $('.kpi').on('click', '.kpi__item[data-status]', function () {
         var status = $(this).attr('data-status');
@@ -322,8 +352,8 @@
       // 「清除篩選」:篩選無結果時的次要動作(委派綁定,因 .state 為動態插入)
       $('#grid').on('click', '[data-action="reset-filters"]', function () { Controls.reset(); });
 
-      // 工具列(查詢/篩選/排序/每頁筆數)+ 分頁:操作 → 改 view → renderView 重繪
-      Controls.init(renderView);
+      // 工具列(查詢/篩選/排序/每頁筆數)+ 分頁:操作 → 改 view → 重繪 + 記住偏好
+      Controls.init(function () { renderView(); savePrefs(); });
 
       // 相對時間「N 秒前」每 5 秒重算(基準時間由 stampUpdated 設定)
       window.setInterval(renderUpdated, 5000);
