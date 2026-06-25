@@ -22,7 +22,7 @@
      回傳同形狀 { items, total, totalPages, page },上層(renderView)不必改。
      KPI/風險排行/告警一律另對 AppState 全量算,不受此處篩選分頁影響(見 docs/07 §5.3)。 */
   var DEFAULT_PAGE_SIZE = 12;
-  var view = { search: '', status: 'All', pageSize: DEFAULT_PAGE_SIZE, page: 1 };
+  var view = { search: '', status: 'All', pageSize: DEFAULT_PAGE_SIZE, page: 1, sort: 'severity', sortDir: 'desc' };
 
   // 篩選 + 排序(危險優先、同級 id 升序)。listQuery 分頁與「明細 Modal 左右切換」共用同一份順序,
   // 使用者看到什麼順序、左右切換就照什麼順序(見 navIdsFor)。
@@ -37,10 +37,23 @@
       }
       return true;
     });
-    // 與 reorder()/後端一致:危險優先、同級 id 升序 → 分頁邊界穩定
+    // 排序:嚴重度 / 名稱 / 最新值,各支援升降冪(v.sortDir)。比較式一律以「升冪」為基準,
+    // 降冪再乘 -1;以 id 升序做穩定 tiebreak(不隨方向翻轉 → 分頁邊界與 FLIP 重排順序一致)。
+    // 無最新值固定排最後(不隨升降冪),避免「—」插在中間。
+    var sort = v.sort || 'severity';
+    var dir = (v.sortDir === 'asc') ? 1 : -1;
     filtered.sort(function (a, b) {
-      var ra = statusRank(a.status), rb = statusRank(b.status);
-      if (ra !== rb) return rb - ra;
+      var cmp = 0;
+      if (sort === 'name') {
+        cmp = String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant');
+      } else if (sort === 'value') {
+        var an = (a.latestValue == null), bn = (b.latestValue == null);
+        if (an !== bn) return an ? 1 : -1;                       // 無值固定最後
+        if (!an) cmp = a.latestValue - b.latestValue;            // 升冪:低→高
+      } else {
+        cmp = statusRank(a.status) - statusRank(b.status);       // 升冪:良好→危險
+      }
+      if (cmp !== 0) return cmp * dir;
       var ia = String(a.id).toLowerCase(), ib = String(b.id).toLowerCase();
       return ia < ib ? -1 : ia > ib ? 1 : 0;
     });
@@ -65,8 +78,26 @@
     return filterSort(all, { search: '', status: 'All' }).map(function (m) { return m.id; });
   }
 
+  // 相對時間「N 秒前」:stampUpdated 設基準時間,renderUpdated 由 5 秒 ticker 重算顯示。
+  // title 仍掛絕對時間(滑上去看得到精確時刻)。
+  var lastUpdatedAt = null;
+  function relativeTime(ts) {
+    var s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 5) return '剛剛';
+    if (s < 60) return s + ' 秒前';
+    var m = Math.floor(s / 60);
+    if (m < 60) return m + ' 分前';
+    return Math.floor(m / 60) + ' 小時前';
+  }
+  function renderUpdated() {
+    if (!lastUpdatedAt) return;
+    $('#last-updated')
+      .text('資料更新:' + relativeTime(lastUpdatedAt))
+      .attr('title', new Date(lastUpdatedAt).toLocaleString());
+  }
   function stampUpdated() {
-    $('#last-updated').text('資料更新:' + new Date().toLocaleTimeString());
+    lastUpdatedAt = Date.now();
+    renderUpdated();
   }
 
   // 重試所有「載入失敗」的設備圖檔(手動刷新時呼叫)。
@@ -117,6 +148,24 @@
         view.status = $b.attr('data-status') || 'All';
         view.page = 1; onChange();
       });
+
+      // 排序欄位(嚴重度 / 名稱 / 最新值)+ 升降冪切換鈕
+      function defaultDir(field) { return field === 'name' ? 'asc' : 'desc'; }   // 名稱預設 A→Z;嚴重度/最新值預設高→低
+      function syncSortDir() {
+        $('#filter-sort-dir')
+          .text(view.sortDir === 'asc' ? '↑' : '↓')
+          .attr('aria-label', view.sortDir === 'asc' ? '目前升冪,點擊改降冪' : '目前降冪,點擊改升冪');
+      }
+      $('#filter-sort').on('change', function () {
+        view.sort = this.value || 'severity';
+        view.sortDir = defaultDir(view.sort);     // 切欄位 → 套該欄位的自然方向
+        view.page = 1; syncSortDir(); onChange();
+      });
+      $('#filter-sort-dir').on('click', function () {
+        view.sortDir = (view.sortDir === 'asc') ? 'desc' : 'asc';
+        view.page = 1; syncSortDir(); onChange();
+      });
+      syncSortDir();   // 初始化方向鈕箭頭
 
       // 每頁筆數
       $('#filter-page-size').on('change', function () {
@@ -273,8 +322,11 @@
       // 「清除篩選」:篩選無結果時的次要動作(委派綁定,因 .state 為動態插入)
       $('#grid').on('click', '[data-action="reset-filters"]', function () { Controls.reset(); });
 
-      // 工具列(查詢/篩選/每頁筆數)+ 分頁:操作 → 改 view → renderView 重繪
+      // 工具列(查詢/篩選/排序/每頁筆數)+ 分頁:操作 → 改 view → renderView 重繪
       Controls.init(renderView);
+
+      // 相對時間「N 秒前」每 5 秒重算(基準時間由 stampUpdated 設定)
+      window.setInterval(renderUpdated, 5000);
 
       // 風險排行:點擊 / Enter / Space → 選取該設備(連動高亮 + 開趨勢圖)
       $('#risk-list')

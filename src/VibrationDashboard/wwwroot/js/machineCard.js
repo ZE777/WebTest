@@ -93,7 +93,7 @@
         var id = this.getAttribute('data-id');
         if (!incoming[id]) remove(id);                 // 移除已離開當前頁的卡
       });
-      reorder();                                       // 危險優先排序(順序未變則不碰 DOM)
+      reorder(items.map(function (m) { return m.id; })); // 依目前排序順序排列(順序未變則不碰 DOM)
     }
 
     // 篩選無結果:沿用 .state 置中視覺,附「清除篩選」次要動作
@@ -251,11 +251,23 @@
 
     // 依嚴重度重排卡片(危險優先,同級依 id),與後端初始排序一致。
     // 只移動既有 DOM 節點(appendChild 是搬移非重建),保留事件/選取/動畫。
-    function reorder() {
+    function reorder(orderIds) {
       var $g = grid();
       var cards = $g.children('.card').get();
       if (cards.length < 2) return;
+      // 依 dashboard 傳入的「目前排序後 id 順序」排列卡片(支援嚴重度 / 名稱 / 最新值);
+      // 未傳則退回危險優先(向後相容)。排序切換時 FLIP 會讓卡片平滑滑到新位置。
+      var pos = null;
+      if (orderIds && orderIds.length) {
+        pos = {};
+        for (var k = 0; k < orderIds.length; k++) pos[orderIds[k]] = k;
+      }
       cards.sort(function (a, b) {
+        if (pos) {
+          var pa = pos[a.getAttribute('data-id')]; if (pa == null) pa = Infinity;
+          var pb = pos[b.getAttribute('data-id')]; if (pb == null) pb = Infinity;
+          return pa - pb;
+        }
         var ra = Shared.statusRank($(a).data('status')), rb = Shared.statusRank($(b).data('status'));
         if (ra !== rb) return rb - ra;                  // 危險(高 rank)在前
         var ia = String(a.getAttribute('data-id')).toLowerCase();

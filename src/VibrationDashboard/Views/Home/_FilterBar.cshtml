@@ -13,6 +13,13 @@
         </div>
     </div>
     <div class="filterbar__group filterbar__group--end">
+        <label class="filterbar__label" for="filter-sort">排序</label>
+        <select id="filter-sort" class="filterbar__select" aria-label="排序方式">
+            <option value="severity" selected>嚴重度</option>
+            <option value="name">名稱</option>
+            <option value="value">最新值</option>
+        </select>
+        <button type="button" id="filter-sort-dir" class="filterbar__sortdir" aria-label="目前降冪,點擊改升冪" title="升冪 / 降冪">↓</button>
         <label class="filterbar__label" for="filter-page-size">每頁</label>
         <select id="filter-page-size" class="filterbar__select" aria-label="每頁顯示筆數">
             <option value="12" selected>12 筆</option>
