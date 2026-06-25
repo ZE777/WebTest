@@ -32,8 +32,10 @@
       if (v.status !== 'All' && m.status !== v.status) return false;
       if (v.type && v.type !== 'All' && m.type !== v.type) return false;
       if (q) {
-        // 名稱 + 編號 + 類型皆可搜(如輸入「泵」即篩出所有泵浦;僅做比對,不進 DOM,無 XSS 風險)
-        var hay = (String(m.name || '') + ' ' + String(m.id || '') + ' ' + String(m.type || '')).toLowerCase();
+        // 只比對卡片上「看得到」的欄位:名稱 + 類型(編號 id 不顯示於卡片,故不納入比對,
+        // 避免「打 A 卻命中 BEAR-H01 的 id」這種所見≠所搜的誤命中)。名稱本身已含序號
+        // (如「軸承座 H01」),打 H01/A01 仍能命中名稱。僅做比對,不進 DOM,無 XSS 風險。
+        var hay = (String(m.name || '') + ' ' + String(m.type || '')).toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
