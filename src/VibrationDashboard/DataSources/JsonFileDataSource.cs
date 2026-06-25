@@ -91,10 +91,11 @@ public sealed class JsonFileDataSource : IMachineDataSource
 
     private Machine MapToMachine(MachineFileModel model, string path)
     {
-        // id 以「JSON 內的 id」為準，缺漏時退回檔名（一機一檔；檔名即識別碼）。
-        var id = string.IsNullOrWhiteSpace(model.Id)
-            ? Path.GetFileNameWithoutExtension(path)
-            : model.Id;
+        // id 一律以「檔名」為單一真相（一機一檔；檔名即識別碼）。
+        // 不再優先採內容的 id —— 否則檔名與內容 id 不一致時會裂開：清單（GetAll）用內容 id 仍畫得出卡片，
+        // 但單筆查找（GetById 以 {id}.json 反推檔名：圖片 / 明細 Modal / 刪除推播）會找不到檔 →
+        // 卡片出得來卻小圖 404、Modal MACHINE_NOT_FOUND、刪檔時推播的 id 也對不上卡片而刪不掉。
+        var id = Path.GetFileNameWithoutExtension(path);
 
         var (imageBytes, imageContentType) = ParseDataUri(model.Image);
 

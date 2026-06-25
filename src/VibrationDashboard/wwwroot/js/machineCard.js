@@ -183,6 +183,18 @@
         if (m.status === 'Danger' && prev !== 'Danger') flashDanger($c);
       }
 
+      // 小圖(設備照片):buildCard 只設一次,patch 也要同步 —— 否則圖片「從無到有 / 內容變更」時
+      // 主畫面不會刷新(舊行為只能 F5)。imageUrl 帶內容版本指紋(?v=雜湊):內容變了 src 才變 → 換 src
+      // 觸發重抓;內容沒變則 src 相同、不動。無圖則移除 img(與 buildCard 行為一致)。
+      var $media = $c.find('.card__media');
+      var $img = $media.find('.card__img');
+      if (m.hasImage && m.imageUrl) {
+        if (!$img.length) { $img = $('<img class="card__img" loading="lazy" />').prependTo($media); }
+        if ($img.attr('src') !== m.imageUrl) { $img.attr('src', m.imageUrl).attr('alt', m.name + ' 設備圖'); }
+      } else if ($img.length) {
+        $img.remove();
+      }
+
       // 走勢圖:畫的是整段序列且依狀態著色 → 以「狀態+全序列」指紋比對,序列或狀態任一變就重畫。
       // (修正舊行為:過去把重畫綁在「最新值有沒有變」,改歷史值時走勢圖不會更新。)
       var sparkKey = sparkKeyOf(m);

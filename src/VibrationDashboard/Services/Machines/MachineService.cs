@@ -63,7 +63,7 @@ public sealed class MachineService : IMachineService
             LatestTime = latest?.Time,
             Severity = ComputeSeverity(latest?.Value, m.DangerThreshold),
             HasImage = hasImage,
-            ImageUrl = hasImage ? ImageUrlFor(m.Id) : null,
+            ImageUrl = hasImage ? ImageUrlFor(m.Id, m.ImageBytes!) : null,
             Sparkline = m.Measurements.Select(x => x.Value).ToList()
         };
     }
@@ -88,7 +88,7 @@ public sealed class MachineService : IMachineService
             WarningThreshold = m.WarningThreshold,
             DangerThreshold = m.DangerThreshold,
             HasImage = hasImage,
-            ImageUrl = hasImage ? ImageUrlFor(m.Id) : null,
+            ImageUrl = hasImage ? ImageUrlFor(m.Id, m.ImageBytes!) : null,
             LatestValue = latest?.Value,
             LatestTime = latest?.Time,
             Measurements = m.Measurements.Select(x => new MeasurementDto(x.Time, x.Value)).ToList(),
@@ -96,7 +96,10 @@ public sealed class MachineService : IMachineService
         };
     }
 
-    private static string ImageUrlFor(string id) => $"/api/machines/{id}/image";
+    // 圖片 URL 附「內容版本指紋」（?v=雜湊）：圖檔內容變了 URL 才變 → 前端 patch 比對 src 不同就換 src、
+    // 觸發瀏覽器重抓;內容沒變則 URL 不變、不會每次量測更新都白抓。版本取雜湊前 4 位元組（8 hex）夠用。
+    private static string ImageUrlFor(string id, byte[] imageBytes)
+        => $"/api/machines/{id}/image?v={Convert.ToHexString(SHA256.HashData(imageBytes).AsSpan(0, 4))}";
 
     /// <summary>以內容雜湊產生強 ETag(內容改變才會變),取 SHA-256 前 16 位元組。</summary>
     private static string ComputeETag(byte[] bytes)
