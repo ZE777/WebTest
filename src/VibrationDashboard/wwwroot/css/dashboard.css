@@ -126,6 +126,18 @@ h1, h2 { margin: 0; font-weight: 600; }
   padding: 7px 12px; font-size: 13px;
 }
 .filterbar__search::placeholder { color: var(--text-dim); }
+/* 清除鈕:原生 × 在深色底太淡、太小。改畫成明顯的淺色圓鈕(內含深色 ×),
+   hover 轉紅明確表達「清除」。僅 WebKit/Blink(Edge/Chrome)支援此偽元素。 */
+.filterbar__search::-webkit-search-cancel-button {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; margin-left: 6px;
+  cursor: pointer; border-radius: 50%;
+  background-color: var(--text-dim);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath stroke='%230E1726' stroke-width='3.2' stroke-linecap='round' d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center; background-size: 12px 12px;
+  transition: background-color .15s ease;
+}
+.filterbar__search::-webkit-search-cancel-button:hover { background-color: var(--danger); }
 .filterbar__group { display: inline-flex; align-items: center; gap: var(--space-2); }
 .filterbar__group--end { margin-left: auto; }
 .filterbar__label { color: var(--text-dim); font-size: 12px; }
@@ -165,6 +177,11 @@ h1, h2 { margin: 0; font-weight: 600; }
 .kpi__label { color: var(--text-dim); font-size: 12px; display: inline-flex; align-items: center; gap: var(--space-2); }
 .kpi__num { font-family: var(--font-readout); letter-spacing: -.5px; font-size: var(--font-value); font-weight: 700; font-variant-numeric: tabular-nums; }
 .kpi__dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+/* 狀態圓點光學置中:flex align-items:center 會把實心圓點對到「文字行框」中心,
+   但 CJK 字形(微軟正黑體)的視覺中心比行框中心略低,使圓點看起來偏高(實測約 0.3px)。
+   實心圓點視覺重量大,往下推 1px 後在各處(KPI/卡片/Modal/排行/告警/連線)看起來才置中。
+   pulse 動畫只動 opacity,不與此 transform 衝突。 */
+.kpi__dot, .status__dot, .conn__dot, .risk-item__dot, .alert-item__dot { transform: translateY(1px); }
 .kpi__dot--good    { background: var(--good); }
 .kpi__dot--abnormal{ background: var(--warning); }
 .kpi__dot--danger  { background: var(--danger); }
@@ -195,7 +212,7 @@ h1, h2 { margin: 0; font-weight: 600; }
   border-radius: var(--radius); padding: var(--space-3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
 }
-.panel__title { font-size: 13px; color: var(--text); display: flex; align-items: baseline; gap: var(--space-2); }
+.panel__title { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: var(--space-2); }
 .panel__title small { color: var(--text-dim); font-size: 11px; font-weight: 400; }
 
 /* 狀態分布堆疊長條(三段占比;CSS-only,免 echarts) */
@@ -230,10 +247,13 @@ h1, h2 { margin: 0; font-weight: 600; }
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; padding: 0; margin-left: 4px;
   border: 0; background: transparent; color: var(--text-dim);
-  cursor: help; vertical-align: -2px; border-radius: 50%;
+  cursor: help; vertical-align: middle; align-self: center; border-radius: 50%;
   transition: color var(--transition);
 }
 .info-dot svg { width: 13px; height: 13px; }
+/* 風險排行在 .panel__title(flex gap 8px)下,icon 會多吃一份 gap → 間距 12px;
+   抵掉那份 gap,讓「icon↔文字」間距 = 4px,與健康率走勢(inline,僅 margin-left)一致。 */
+.panel__title .info-dot { margin-left: calc(4px - var(--space-2)); }
 .info-dot:hover, .info-dot:focus-visible { color: var(--accent); outline: none; }
 .dist__delta { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .dist__delta--up   { color: var(--good); }
