@@ -9,6 +9,31 @@
 
   var statusKey = Shared.statusKey, statusLabel = Shared.statusLabel, formatValue = Shared.formatValue;
 
+  // ── 動畫小工具(階段 1) ──────────────────────────────────────────────
+  var EASE = 'cubic-bezier(.25,.8,.25,1)';                 // 與 CSS --ease 一致
+  var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  function reduced() { return !!(RM && RM.matches); }      // 尊重「減少動態」偏好,與 CSS @media 同步
+
+  // 讀數滾動(count-up):from→to 以 rAF 過渡(easeOutCubic),期間用 formatValue 格式化。
+  // reduced-motion / 非數字 / 無變化 → 直接設值;重入時取消前一輪,避免多個 rAF 疊加跳動。
+  function animateValue(el, from, to) {
+    var fromN = Number(from), toN = Number(to);
+    if (el._raf) { cancelAnimationFrame(el._raf); el._raf = null; }
+    if (reduced() || from == null || to == null || !isFinite(fromN) || !isFinite(toN) || fromN === toN) {
+      el.textContent = formatValue(to); return;
+    }
+    var dur = 500, start = null;
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var k = 1 - Math.pow(1 - p, 3);                       // easeOutCubic
+      el.textContent = formatValue(fromN + (toN - fromN) * k);
+      if (p < 1) { el._raf = requestAnimationFrame(step); }
+      else { el._raf = null; el.textContent = formatValue(to); }
+    }
+    el._raf = requestAnimationFrame(step);
+  }
+
   var MachineRenderer = (function () {
     function grid() { return $('#grid'); }
 
@@ -166,7 +191,8 @@
       // 最新值:變了才改數字並閃光(閃光只對「讀數跳動」有意義)
       var $num = $c.find('.card__value-num');
       if ($num.data('raw') !== m.latestValue) {
-        $num.data('raw', m.latestValue).text(formatValue(m.latestValue));
+        animateValue($num[0], $num.data('raw'), m.latestValue);   // count-up 滾動(階段 1)
+        $num.data('raw', m.latestValue);
         flashUpdated($c);
       }
 
@@ -200,7 +226,22 @@
       var sparkKey = sparkKeyOf(m);
       if ($c.data('spark-key') !== sparkKey) {
         $c.data('spark-key', sparkKey);
-        $c.find('.card__spark').html(Sparkline.build(m.sparkline, m.status));
+        var $spark = $c.find('.card__spark');
+        $spark.html(Sparkline.build(m.sparkline, m.status));
+        // 走勢線「描線」動畫(階段 1,選項 B):clip-path 由左至右揭示。
+        // sparkline 本就左→右(x=時間)繪製,左到右擦出視覺上等同描線;clip-path 作用於元素方框、
+        // 不碰 SVG 座標系,故 preserveAspectRatio="none" 的橫向拉伸也不會斷線,結尾必為完整線。
+        if (!reduced()) {
+          var sp = $spark[0];
+          sp.style.transition = 'none';
+          sp.style.webkitClipPath = sp.style.clipPath = 'inset(0 100% 0 0)';   // 全裁(右內縮 100%)
+          void sp.getBoundingClientRect();                                     // 強制 reflow,使起點生效
+          sp.style.transition = 'clip-path .55s ' + EASE + ', -webkit-clip-path .55s ' + EASE;
+          sp.style.webkitClipPath = sp.style.clipPath = 'inset(0 0 0 0)';      // 揭示到全寬
+          window.setTimeout(function () {                                      // 動畫後清掉 inline
+            sp.style.transition = ''; sp.style.clipPath = ''; sp.style.webkitClipPath = '';
+          }, 600);
+        }
       }
 
       return statusChanged;
@@ -225,9 +266,36 @@
       var dom = $g[0].children;
       var changed = cards.some(function (c, i) { return dom[i] !== c; });
       if (!changed) return;
+
+      // reduced-motion:直接搬位,不做位移動畫
+      if (reduced()) {
+        var fr = document.createDocumentFragment();
+        cards.forEach(function (c) { fr.appendChild(c); });
+        $g[0].appendChild(fr);
+        return;
+      }
+
+      // FLIP 重排動畫(階段 1):First 記舊位置 → 重排(Last)→ Invert 先位移回舊位 → Play 過渡到 0。
+      // 卡片「滑」到新位置(例如升危險滑到最前),而非瞬間跳動。
+      var first = cards.map(function (c) { return c.getBoundingClientRect(); });
       var frag = document.createDocumentFragment();
       cards.forEach(function (c) { frag.appendChild(c); });
       $g[0].appendChild(frag);
+      cards.forEach(function (c, i) {
+        var lastR = c.getBoundingClientRect();
+        var dx = first[i].left - lastR.left, dy = first[i].top - lastR.top;
+        if (!dx && !dy) return;
+        c.style.transition = 'none';
+        c.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      });
+      void $g[0].offsetWidth;                              // 強制 reflow,使位移成為動畫起點
+      cards.forEach(function (c) {
+        c.style.transition = 'transform .4s ' + EASE;
+        c.style.transform = '';
+      });
+      window.setTimeout(function () {                      // 動畫結束清掉 inline,交還 hover 的 transform
+        cards.forEach(function (c) { c.style.transition = ''; c.style.transform = ''; });
+      }, 460);
     }
 
     function flashUpdated($card) {
